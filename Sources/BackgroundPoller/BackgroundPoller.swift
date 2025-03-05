@@ -33,13 +33,8 @@ public final class BackgroundPoller<D: PollerDelegate>: NSObject, URLSessionTask
     private let sessionIdentifier: String
     
     /// A background URLSession used for polling.
-    private lazy var session: URLSession = {
-        URLSession(
-            configuration: .background(withIdentifier: sessionIdentifier),
-            delegate: self,
-            delegateQueue: .current
-        )
-    }()
+    private var session: URLSession?
+    private var completion: (() -> Void)?
     
     // MARK: - Initialization
     
@@ -64,11 +59,25 @@ public final class BackgroundPoller<D: PollerDelegate>: NSObject, URLSessionTask
         self.attemptsRemaining = attempts
         self.retryDelay = retryDelay
         self.sessionIdentifier = sessionIdentifier
+        let config = URLSessionConfiguration.background(withIdentifier: sessionIdentifier)
+        config.isDiscretionary = false
+        config.sessionSendsLaunchEvents = true
+
+        session = URLSession(configuration: config)
         super.init()
     }
     // MARK: - Public Methods
     public func start() {
         performUploadTask()
+    }
+    public func restore(withCompletion completion: @escaping () -> Void){
+        let config = URLSessionConfiguration.background(withIdentifier: sessionIdentifier)
+        config.isDiscretionary = false
+        config.sessionSendsLaunchEvents = true
+
+        session = URLSession(configuration: config)
+
+        self.completion = completion
     }
     
     // MARK: - Private Methods
@@ -80,8 +89,8 @@ public final class BackgroundPoller<D: PollerDelegate>: NSObject, URLSessionTask
         
         do {
             let fileURL = try body.createTempFile()
-            let task = session.uploadTask(with: request, fromFile: fileURL)
-            task.resume()
+            let task = session?.uploadTask(with: request, fromFile: fileURL)
+            task?.resume()
         } catch {
             print("Failed to create temporary file for polling: \(error.localizedDescription)")
         }
@@ -114,7 +123,6 @@ public final class BackgroundPoller<D: PollerDelegate>: NSObject, URLSessionTask
         guard !hasFinished else { return }
         hasFinished = true
         delegate?.pollingDidFinish(result: result)
-        session.invalidateAndCancel()
     }
     
     // MARK: - URLSession Delegates
@@ -157,6 +165,13 @@ public final class BackgroundPoller<D: PollerDelegate>: NSObject, URLSessionTask
         if let error = error {
             print("URLSession task completed with error: \(error.localizedDescription)")
         }
+    }
+    public func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {
+        if let completion {
+            self.completion = nil
+            completion()
+        }
+
     }
 }
 

@@ -123,6 +123,7 @@ public final class BackgroundPoller<D: PollerDelegate>: NSObject, URLSessionTask
         guard !hasFinished else { return }
         hasFinished = true
         delegate?.pollingDidFinish(result: result)
+        session?.invalidateAndCancel()
     }
     
     // MARK: - URLSession Delegates

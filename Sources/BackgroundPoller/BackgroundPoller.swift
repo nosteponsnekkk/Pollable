@@ -63,8 +63,14 @@ public final class BackgroundPoller<D: PollerDelegate>: NSObject, URLSessionTask
         config.isDiscretionary = false
         config.sessionSendsLaunchEvents = true
         
-        session = URLSession(configuration: config)
         super.init()
+        
+        session = URLSession(
+            configuration: config,
+            delegate: self,
+            delegateQueue: .current
+        )
+        
     }
     // MARK: - Public Methods
     public func start() {

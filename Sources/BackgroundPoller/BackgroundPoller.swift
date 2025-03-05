@@ -46,7 +46,7 @@ public final class BackgroundPoller<D: PollerDelegate>: NSObject, URLSessionTask
     ///   - sessionIdentifier: The identifier used for the URLSession.
     ///   - attempts: The maximum number of attempts (default is 10).
     ///   - retryDelay: The delay between polling attempts in nanoseconds (default is 15 seconds).
-
+    
     public init(request: URLRequest,
                 body: Data?,
                 delegate: D?,
@@ -62,7 +62,7 @@ public final class BackgroundPoller<D: PollerDelegate>: NSObject, URLSessionTask
         let config = URLSessionConfiguration.background(withIdentifier: sessionIdentifier)
         config.isDiscretionary = false
         config.sessionSendsLaunchEvents = true
-
+        
         session = URLSession(configuration: config)
         super.init()
     }
@@ -74,9 +74,13 @@ public final class BackgroundPoller<D: PollerDelegate>: NSObject, URLSessionTask
         let config = URLSessionConfiguration.background(withIdentifier: sessionIdentifier)
         config.isDiscretionary = false
         config.sessionSendsLaunchEvents = true
-
-        session = URLSession(configuration: config)
-
+        
+        session = URLSession(
+            configuration: config,
+            delegate: self,
+            delegateQueue: .current
+        )
+        
         self.completion = completion
     }
     
@@ -172,7 +176,7 @@ public final class BackgroundPoller<D: PollerDelegate>: NSObject, URLSessionTask
             self.completion = nil
             completion()
         }
-
+        
     }
 }
 
